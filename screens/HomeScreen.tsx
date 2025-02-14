@@ -1,165 +1,194 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, SafeAreaView, ScrollView, Image } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import React, { useState, useEffect } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Image,
+  ScrollView,
+  Alert,
+} from "react-native";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
-const screenWidth = Dimensions.get('window').width; // Get screen width
-const screenHeight = Dimensions.get('window').height; // Get screen height
+// ✅ Replace with your FastAPI backend URL
+const BASE_URL = "http://192.168.35.164:8000";
 
-const HomeScreen = () => {
-  // 🔹 Card Data (Quick Access + Law & Safety)
-  const cards = [
-    { id: 'knowDept', title: 'Know Dept', icon: 'business-outline' },
-    { id: 'events', title: 'Calendar', icon: 'calendar-outline' },
-    { id: 'complaints', title: 'Complaint', icon: 'megaphone-outline' },
-    { id: 'jobs', title: 'Court', icon: 'briefcase-outline' },
-    { id: 'crimePrevention', title: 'Crime Prev.', icon: 'shield-checkmark-outline' },
-    { id: 'mostWanted', title: 'Most Wanted', icon: 'person-remove-outline' },
-  ];
+const HomeScreen = ({ navigation }: { navigation: any }) => {
+  const [userData, setUserData] = useState<any>(null);
+  const [balanceVisible, setBalanceVisible] = useState(false);
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          Alert.alert("Session Expired", "Please log in again.");
+          navigation.replace("Login");
+          return;
+        }
+
+        const response = await axios.get(`${BASE_URL}/user/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUserData(response.data);
+      } catch (error: any) {
+        console.error("Profile Fetch Error:", error);
+        Alert.alert("Error", "Failed to fetch profile");
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <View style={styles.container}>
-        {/* 🎨 Enhanced Welcome Banner with Larger Image */}
-        <LinearGradient colors={['#1E3C72', '#2A5298']} style={styles.banner}>
-          <Image source={require('../Asset/Used/arrest.png')} style={styles.bannerImage} />
-          <View style={styles.bannerTextContainer}>
-            <Text style={styles.bannerTitle}>Welcome!</Text>
-            <Text style={styles.bannerSubtitle}>
-              Connecting you to law enforcement and keeping you informed.
-            </Text>
-          </View>
-        </LinearGradient>
-
-        {/* 📜 Content Section */}
-        <View style={styles.content}>
-          {/* 🔹 Quick Access Section */}
-          <Text style={styles.sectionTitle}>Quick Access</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.horizontalContainer}>
-              {cards.slice(0, 3).map((card) => (
-                <TouchableOpacity key={card.id} style={styles.card}>
-                  <LinearGradient colors={['#1E3C72', '#2A5298']} style={styles.cardContent}>
-                    <Ionicons name={card.icon} size={32} color="#ffffff" />
-                    <Text 
-                      style={styles.cardText} 
-                      numberOfLines={1} 
-                      ellipsizeMode="tail"
-                    >
-                      {card.title}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* ⚖️ Law & Safety Section */}
-          <Text style={styles.sectionTitle}>Law & Safety</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            <View style={styles.horizontalContainer}>
-              {cards.slice(3, 6).map((card) => (
-                <TouchableOpacity key={card.id} style={styles.card}>
-                  <LinearGradient colors={['#1E3C72', '#2A5298']} style={styles.cardContent}>
-                    <Ionicons name={card.icon} size={32} color="#ffffff" />
-                    <Text 
-                      style={styles.cardText} 
-                      numberOfLines={1} 
-                      ellipsizeMode="tail"
-                    >
-                      {card.title}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </ScrollView>
-
-          {/* 🔴 Stylish "Call Control Room" Button */}
-          <TouchableOpacity style={styles.submitTip}>
-            <Ionicons name="call-outline" size={28} color="#fff" />
-            <Text style={styles.submitTipText}>Call Control Room</Text>
-          </TouchableOpacity>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* 🔝 Header Section */}
+        <View style={styles.headerContainer}>
+          <Text style={styles.greeting}>Hello {userData?.name || "User"}</Text>
+          <Text style={styles.subText}>Your finances are looking good</Text>
         </View>
-      </View>
+
+        {/* 💰 Balance Card */}
+        <View style={styles.balanceCard}>
+          <Image source={{ uri: "https://i.pravatar.cc/100" }} style={styles.avatar} />
+          <Text style={styles.balanceText}>Your available balance is</Text>
+          <View style={styles.balanceRow}>
+            <Text style={styles.balanceAmount}>
+              ₹ {balanceVisible ? userData?.balance || "0.00" : "****"}
+            </Text>
+            <TouchableOpacity onPress={() => setBalanceVisible(!balanceVisible)}>
+              <Ionicons name={balanceVisible ? "eye-off" : "eye"} size={22} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* 📌 Sort Transactions */}
+        <TouchableOpacity style={styles.actionCard}>
+          <Text style={styles.actionText}>Sort your transactions</Text>
+          <Text style={styles.actionSubText}>Get points for sorting transactions</Text>
+          <Ionicons name="chevron-forward" size={22} color="white" />
+        </TouchableOpacity>
+
+        {/* 🏦 Budget Section */}
+        <View style={styles.budgetCard}>
+          <Text style={styles.budgetTitle}>My Budget</Text>
+          <Text style={styles.budgetAmount}>₹ {userData?.balance || "0.00"}</Text>
+          <Text style={styles.budgetSubText}>Left out of ₹80,888 budgeted</Text>
+        </View>
+
+        {/* 💸 Send Money Button */}
+        <TouchableOpacity style={styles.sendMoneyButton} onPress={() => navigation.navigate("SendMoney") }>
+          <Text style={styles.sendMoneyText}>Send Money</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-// ✅ Correct Default Export (ONLY ONE EXPORT)
 export default HomeScreen;
 
-// ✅ Styles
 const styles = StyleSheet.create({
-  safeContainer: { flex: 1, backgroundColor: '#F5F5F5' },
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  banner: {
-    height: screenHeight * 0.25,
-    width: '90%',
-    padding: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    marginTop: 10,
-    elevation: 10,
-  },
-  bannerImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginRight: 15,
-  },
-  bannerTextContainer: { flex: 1 },
-  bannerTitle: { fontSize: 28, fontWeight: 'bold', color: '#fff', textAlign: 'left' },
-  bannerSubtitle: { fontSize: 14, color: '#E3F2FD', textAlign: 'left', marginTop: 5 },
-  content: { flex: 1, width: '90%', marginTop: 10 },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#1976D2',
-    marginBottom: 10,
-    textAlign: 'left',
-    alignSelf: 'flex-start',
-  },
-  horizontalContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-  },
-  card: {
-    borderRadius: 12,
-    overflow: 'hidden', // ✅ Ensures the gradient stays inside the border
-    width: screenWidth * 0.32, // ✅ Increased width to ensure text fits
-    height: screenWidth * 0.35, // ✅ Slightly adjusted height for better layout
-    marginHorizontal: 10,
-    elevation: 5,
-  },
-  cardContent: {
+  safeContainer: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    padding: 15, // ✅ Reduced padding slightly to keep text within the box
+    backgroundColor: "#120E43",
   },
-  cardText: {
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  headerContainer: {
+    marginBottom: 20,
+  },
+  greeting: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "white",
+  },
+  subText: {
     fontSize: 14,
-    marginTop: 8, // ✅ Slightly adjusted margin to keep spacing clean
-    textAlign: 'center',
-    fontWeight: 'bold',
-    color: '#ffffff',
-    width: '90%', // ✅ Ensures text stays inside the card
+    color: "#E3F2FD",
   },
-  submitTip: {
-    backgroundColor: '#D32F2F',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 12,
+  balanceCard: {
+    backgroundColor: "#1E1B48",
+    padding: 20,
+    borderRadius: 15,
+    alignItems: "center",
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginBottom: 10,
+  },
+  balanceText: {
+    color: "white",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  balanceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  balanceAmount: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "white",
+    marginRight: 10,
+  },
+  actionCard: {
+    backgroundColor: "#29247D",
+    padding: 15,
     borderRadius: 10,
-    width: '80%',
-    elevation: 5,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 20,
-    alignSelf: 'center',
   },
-  submitTipText: { color: '#fff', fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
+  actionText: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: "white",
+  },
+  actionSubText: {
+    fontSize: 12,
+    color: "#BBB",
+  },
+  budgetCard: {
+    backgroundColor: "#1E1B48",
+    padding: 20,
+    borderRadius: 10,
+    marginTop: 20,
+  },
+  budgetTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+  },
+  budgetAmount: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#FFD700",
+    marginTop: 5,
+  },
+  budgetSubText: {
+    fontSize: 12,
+    color: "#BBB",
+  },
+  sendMoneyButton: {
+    backgroundColor: "#D32F2F",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 30,
+  },
+  sendMoneyText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
 });

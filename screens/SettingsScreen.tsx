@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,13 +8,46 @@ import {
   Image,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
 
-// ✅ Define the function as a constant before export
-const SettingsScreen = ({ navigation }: { navigation: any }) => {
-  const [selectedStatus, setSelectedStatus] = useState("On Duty");
+// ✅ Replace with your FastAPI backend URL
+const BASE_URL = "http://192.168.35.164:8000"; 
+
+// ✅ Profile Screen Component
+const ProfileScreen = ({ navigation }: { navigation: any }) => {
+  const [userData, setUserData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Fetch User Profile
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+        if (!token) {
+          Alert.alert("Session Expired", "Please log in again.");
+          navigation.replace("Login");
+          return;
+        }
+
+        const response = await axios.get(`${BASE_URL}/auth/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        setUserData(response.data);
+      } catch (error: any) {
+        console.error("Profile Fetch Error:", error);
+        Alert.alert("Error", error.response?.data?.detail || "Failed to fetch profile");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserProfile();
+  }, []);
 
   // ✅ Handle Logout
   const handleLogout = async () => {
@@ -23,110 +56,65 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
     navigation.replace("Login"); // Redirect to Login screen
   };
 
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#007AFF" />
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
         {/* 🔙 Header Section */}
         <View style={styles.header}>
-          <TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
+          <Text style={styles.headerTitle}>Profile</Text>
           <TouchableOpacity>
             <Ionicons name="ellipsis-horizontal" size={24} color="black" />
           </TouchableOpacity>
         </View>
 
-        {/* 👮‍♂️ Profile Info */}
+        {/* 👤 User Info */}
         <View style={styles.profileContainer}>
-          <Image
-            source={require("../Asset/Used/police.png")} // Police image
-            style={styles.profileImage}
-          />
+          <Image source={require("../Asset/Used/police.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
-            <Text style={styles.profileName}>Ajmal</Text>
-            <Text style={styles.profileRole}>Punjab Police Officer</Text>
+            <Text style={styles.profileName}>{userData?.name || "User"}</Text>
+            <Text style={styles.profileRole}>Wallet Balance: ₹{userData?.balance || "0.00"}</Text>
           </View>
-          <TouchableOpacity>
-            <Ionicons name="pencil" size={22} color="orange" />
-          </TouchableOpacity>
         </View>
 
-        {/* 🚔 Horizontally Scrollable Status Selector */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusContainer}>
-          <TouchableOpacity
-            style={[
-              styles.statusBadge,
-              selectedStatus === "On Duty" && styles.selectedStatusBadge,
-              { backgroundColor: "#4CAF50" },
-            ]}
-            onPress={() => setSelectedStatus("On Duty")}
-          >
-            <Text style={styles.statusText}>🚔 On Duty</Text>
-          </TouchableOpacity>
+        {/* 🔢 Wallet & Contact Info */}
+        <View style={styles.infoContainer}>
+          <Text style={styles.infoLabel}>📩 Email:</Text>
+          <Text style={styles.infoText}>{userData?.email || "Not Available"}</Text>
 
-          <TouchableOpacity
-            style={[
-              styles.statusBadge,
-              selectedStatus === "Investigating" && styles.selectedStatusBadge,
-              { backgroundColor: "#FFD700" },
-            ]}
-            onPress={() => setSelectedStatus("Investigating")}
-          >
-            <Text style={styles.statusText}>🕵️ Investigating</Text>
-          </TouchableOpacity>
+          <Text style={styles.infoLabel}>📞 Phone Number:</Text>
+          <Text style={styles.infoText}>{userData?.phone_number || "Not Available"}</Text>
 
-          <TouchableOpacity
-            style={[
-              styles.statusBadge,
-              selectedStatus === "Off Duty" && styles.selectedStatusBadge,
-              { backgroundColor: "#E57373" },
-            ]}
-            onPress={() => setSelectedStatus("Off Duty")}
-          >
-            <Text style={styles.statusText}>🚨 Off Duty</Text>
-          </TouchableOpacity>
-        </ScrollView>
+          <Text style={styles.infoLabel}>💳 Wallet Address:</Text>
+          <Text style={styles.infoText}>{userData?.wallet_address || "Not Available"}</Text>
+        </View>
 
-        {/* ⚖️ Profile Options (Punjab Police Related) */}
+        {/* ⚙️ Profile Options */}
         <View style={styles.menuContainer}>
-          {/* Achievements */}
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Image
-                source={require("../Asset/Used/medal.png")} // Achievement icon
-                style={styles.menuIcon}
-              />
-              <Text style={styles.menuText}>Medals & Achievements</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="gray" />
-          </TouchableOpacity>
-
           {/* Privacy */}
           <TouchableOpacity style={styles.menuItem}>
             <View style={styles.menuLeft}>
-              <Image
-                source={require("../Asset/Used/shield.png")} // Privacy icon
-                style={styles.menuIcon}
-              />
+              <Ionicons name="shield-checkmark" size={22} color="black" />
               <Text style={styles.menuText}>Security & Privacy</Text>
             </View>
-            <View style={styles.menuRight}>
-              <View style={styles.badgeRed}>
-                <Text style={styles.badgeText}>Action Required</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={22} color="gray" />
-            </View>
+            <Ionicons name="chevron-forward" size={22} color="gray" />
           </TouchableOpacity>
 
           {/* Log Out */}
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <View style={styles.menuLeft}>
-              <Image
-                source={require("../Asset/Used/police.png")} // Logout icon
-                style={styles.menuIcon}
-              />
-              <Text style={styles.menuText}>Log Out</Text>
+              <Ionicons name="log-out" size={22} color="red" />
+              <Text style={[styles.menuText, { color: "red" }]}>Log Out</Text>
             </View>
             <Ionicons name="chevron-forward" size={22} color="gray" />
           </TouchableOpacity>
@@ -137,7 +125,7 @@ const SettingsScreen = ({ navigation }: { navigation: any }) => {
 };
 
 // ✅ Ensure only one `export default`
-export default SettingsScreen;
+export default ProfileScreen;
 
 // ✅ Styles
 const styles = StyleSheet.create({
@@ -148,6 +136,11 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 20,
     paddingTop: 20,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     flexDirection: "row",
@@ -162,6 +155,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 20,
+    backgroundColor: "#FFF",
+    padding: 15,
+    borderRadius: 10,
+    elevation: 2,
   },
   profileImage: {
     width: 60,
@@ -173,34 +170,37 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   profileName: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "bold",
   },
   profileRole: {
-    fontSize: 14,
+    fontSize: 16,
     color: "gray",
   },
-  statusContainer: {
-    flexDirection: "row",
-    marginTop: 15,
-    paddingHorizontal: 10,
+  infoContainer: {
+    marginTop: 20,
+    backgroundColor: "#FFF",
+    padding: 15,
+    borderRadius: 10,
+    elevation: 2,
   },
-  statusBadge: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 15,
-    backgroundColor: "#E0E0E0",
-    marginRight: 10,
-  },
-  selectedStatusBadge: {
-    backgroundColor: "#D4E4F1",
-  },
-  statusText: {
+  infoLabel: {
     fontSize: 14,
     fontWeight: "bold",
+    marginTop: 10,
+    color: "#333",
+  },
+  infoText: {
+    fontSize: 16,
+    color: "#555",
+    marginBottom: 10,
   },
   menuContainer: {
     marginTop: 20,
+    backgroundColor: "#FFF",
+    padding: 15,
+    borderRadius: 10,
+    elevation: 2,
   },
   menuItem: {
     flexDirection: "row",
@@ -214,28 +214,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  menuIcon: {
-    width: 25,
-    height: 25,
-    marginRight: 15,
-  },
   menuText: {
     fontSize: 16,
     fontWeight: "500",
-  },
-  menuRight: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  badgeRed: {
-    backgroundColor: "#F9C0C0",
-    paddingVertical: 3,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    marginRight: 10,
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: "bold",
+    marginLeft: 10,
   },
 });

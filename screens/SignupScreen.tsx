@@ -26,25 +26,30 @@ type Props = {
 };
 
 // ✅ API BASE URL (Ensure http:// is included)
-const BASE_URL = "http://172.20.10.7:8000"; // Replace with your laptop's local IP
+const BASE_URL = "http://192.168.35.164:8000"; // Replace with your laptop's local IP
 
 function SignupScreen({ navigation }: Props) {
-  const [fullName, setFullName] = useState('');
-  const [uid, setUid] = useState('');
-  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   // ✅ Validation Function
   const validateInputs = () => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^[6-9]\d{9}$/;
 
-    if (!fullName || !uid || !phone || !password) {
+    if (!name || !email || !phoneNumber || !password) {
       Alert.alert('Error', 'All fields are required!');
       return false;
     }
-    if (!phoneRegex.test(phone)) {
+    if (!emailRegex.test(email)) {
+      Alert.alert('Error', 'Please enter a valid email address!');
+      return false;
+    }
+    if (!phoneRegex.test(phoneNumber)) {
       Alert.alert('Error', 'Please enter a valid phone number!');
       return false;
     }
@@ -61,11 +66,11 @@ function SignupScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${BASE_URL}/auth/signup`, {  // ✅ Fixed URL
-        full_name: fullName,
-        uid,
-        phone,
-        password,
+      const response = await axios.post(`${BASE_URL}/auth/register`, {  // ✅ Fixed API fields
+        name: name,
+        email: email,
+        phone_number: phoneNumber,
+        password: password,
       });
 
       setLoading(false);
@@ -93,20 +98,21 @@ function SignupScreen({ navigation }: Props) {
           placeholder="Full Name"
           placeholderTextColor="#999"
           style={styles.input}
-          value={fullName}
-          onChangeText={setFullName}
+          value={name}
+          onChangeText={setName}
         />
       </View>
 
-      {/* UID Field */}
+      {/* Email Field */}
       <View style={styles.inputContainer}>
-        <FontAwesome name="id-badge" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="envelope" size={20} color="#333" style={styles.icon} />
         <TextInput
-          placeholder="Police UID Number"
+          placeholder="Email Address"
           placeholderTextColor="#999"
+          keyboardType="email-address"
           style={styles.input}
-          value={uid}
-          onChangeText={setUid}
+          value={email}
+          onChangeText={setEmail}
         />
       </View>
 
@@ -118,8 +124,8 @@ function SignupScreen({ navigation }: Props) {
           placeholderTextColor="#999"
           keyboardType="phone-pad"
           style={styles.input}
-          value={phone}
-          onChangeText={setPhone}
+          value={phoneNumber}
+          onChangeText={setPhoneNumber}
         />
       </View>
 

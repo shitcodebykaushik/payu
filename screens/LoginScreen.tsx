@@ -29,12 +29,12 @@ type Props = {
   navigation: LoginScreenNavigationProp;
 };
 
-// ✅ API BASE URL (Ensure http:// is included)
-const BASE_URL = "http://172.20.10.7:8000"; // Replace with your actual local IP
+// ✅ Replace with Your FastAPI Backend IP (use your actual local IP)
+const BASE_URL = "http://192.168.35.164:8000"; // Ensure your backend is running on this IP
 
 // ✅ LoginScreen Component
 const LoginScreen = ({ navigation }: Props) => {
-  const [uid, setUid] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -42,23 +42,28 @@ const LoginScreen = ({ navigation }: Props) => {
   const handleLogin = async () => {
     Keyboard.dismiss(); // Hide keyboard when login is clicked
 
-    if (!uid || !password) {
-      Alert.alert('Error', 'Please enter both UID and Password.');
+    if (!phoneNumber || !password) {
+      Alert.alert('Error', 'Please enter both Phone Number and Password.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await axios.post(`${BASE_URL}/auth/login`, { uid, password });
+      const response = await axios.post(`${BASE_URL}/auth/login`, { 
+        phone_number: phoneNumber, // ✅ Ensure correct key name
+        password: password,
+      });
 
       // ✅ If login is successful, save token & navigate
-      await AsyncStorage.setItem('token', response.data.token || 'dummy-token'); // Modify if token is returned
+      const accessToken = response.data.access_token;
+      await AsyncStorage.setItem('token', accessToken);
+
       Alert.alert('Login Successful', 'Welcome back!');
       navigation.replace('MainApp'); // ✅ Redirect to MainApp
     } catch (error: any) {
       console.error('Login Error:', error);
-      Alert.alert('Login Failed', error.response?.data?.detail || 'Invalid UID or Password.');
+      Alert.alert('Login Failed', error.response?.data?.detail || 'Invalid Phone Number or Password.');
     } finally {
       setLoading(false);
     }
@@ -77,14 +82,14 @@ const LoginScreen = ({ navigation }: Props) => {
           </View>
 
           <Text style={styles.title}>Login</Text>
-          <Text style={styles.subtitle}>Enter your UID and Password</Text>
+          <Text style={styles.subtitle}>Enter your Phone Number and Password</Text>
 
-          {/* 🆔 UID Input */}
+          {/* 📞 Phone Number Input */}
           <TextInput
             style={styles.input}
-            placeholder="Enter UID"
-            value={uid}
-            onChangeText={setUid}
+            placeholder="Enter Phone Number"
+            value={phoneNumber}
+            onChangeText={setPhoneNumber}
             keyboardType="numeric"
             returnKeyType="done"
             onSubmitEditing={Keyboard.dismiss}
