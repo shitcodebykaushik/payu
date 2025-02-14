@@ -12,6 +12,7 @@ import {
 import { FontAwesome, Feather } from '@expo/vector-icons';
 import axios from 'axios';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { LinearGradient } from 'expo-linear-gradient';
 
 // ✅ Define Navigation Type for TypeScript
 type RootStackParamList = {
@@ -66,7 +67,7 @@ function SignupScreen({ navigation }: Props) {
 
     setLoading(true);
     try {
-      const response = await axios.post(`${BASE_URL}/auth/register`, {  // ✅ Fixed API fields
+      const response = await axios.post(`${BASE_URL}/auth/register`, {  
         name: name,
         email: email,
         phone_number: phoneNumber,
@@ -85,15 +86,18 @@ function SignupScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.container}>
+    <LinearGradient colors={['#141E30', '#243B55']} style={styles.container}>
       {/* Circular Logo */}
       <View style={styles.logoContainer}>
-        <Image source={require('../Asset/Used/police.png')} style={styles.logo} />
+        <Image source={require('../Asset/Used/money-bag.png')} style={styles.logo} />
       </View>
+
+      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.subtitle}>Join SecurePay for Secure Transactions</Text>
 
       {/* Full Name Field */}
       <View style={styles.inputContainer}>
-        <FontAwesome name="user" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="user" size={20} color="#4CAF50" style={styles.icon} />
         <TextInput
           placeholder="Full Name"
           placeholderTextColor="#999"
@@ -105,7 +109,7 @@ function SignupScreen({ navigation }: Props) {
 
       {/* Email Field */}
       <View style={styles.inputContainer}>
-        <FontAwesome name="envelope" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="envelope" size={20} color="#4CAF50" style={styles.icon} />
         <TextInput
           placeholder="Email Address"
           placeholderTextColor="#999"
@@ -118,7 +122,7 @@ function SignupScreen({ navigation }: Props) {
 
       {/* Phone Number Field */}
       <View style={styles.inputContainer}>
-        <FontAwesome name="phone" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="phone" size={20} color="#4CAF50" style={styles.icon} />
         <TextInput
           placeholder="Phone Number"
           placeholderTextColor="#999"
@@ -131,7 +135,7 @@ function SignupScreen({ navigation }: Props) {
 
       {/* Password Field */}
       <View style={styles.inputContainer}>
-        <FontAwesome name="lock" size={20} color="#333" style={styles.icon} />
+        <FontAwesome name="lock" size={20} color="#4CAF50" style={styles.icon} />
         <TextInput
           placeholder="Password"
           placeholderTextColor="#999"
@@ -141,7 +145,7 @@ function SignupScreen({ navigation }: Props) {
           onChangeText={setPassword}
         />
         <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#333" />
+          <Feather name={showPassword ? 'eye' : 'eye-off'} size={20} color="#4CAF50" />
         </TouchableOpacity>
       </View>
 
@@ -157,7 +161,7 @@ function SignupScreen({ navigation }: Props) {
           Login
         </Text>
       </Text>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -165,7 +169,6 @@ function SignupScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1E3C72',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 20,
@@ -174,7 +177,7 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: 'white',
+    backgroundColor: '#4CAF50', // Secure Green for Trust and Finance
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
@@ -185,6 +188,18 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 50,
     resizeMode: 'contain',
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#4CAF50', // Green for Secure Finance
+    marginBottom: 5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'white',
+    marginBottom: 20,
+    opacity: 0.8,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -205,7 +220,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   signupButton: {
-    backgroundColor: '#D32F2F',
+    backgroundColor: '#4CAF50',
     paddingVertical: 15,
     borderRadius: 10,
     width: '100%',
@@ -220,7 +235,7 @@ const styles = StyleSheet.create({
   loginText: {
     marginTop: 15,
     fontSize: 16,
-    color: '#fff',
+    color: 'white',
   },
   loginLink: {
     color: '#FFD700',

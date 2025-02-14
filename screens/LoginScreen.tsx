@@ -78,7 +78,7 @@ const LoginScreen = ({ navigation }: Props) => {
         <ScrollView contentContainerStyle={styles.innerContainer} keyboardShouldPersistTaps="handled">
           {/* 🏅 Circular Image Section */}
           <View style={styles.logoContainer}>
-            <Image source={require('../Asset/Used/police.png')} style={styles.logo} />
+            <Image source={require('../Asset/Used/money-bag.png')} style={styles.logo} />
           </View>
 
           <Text style={styles.title}>Login</Text>

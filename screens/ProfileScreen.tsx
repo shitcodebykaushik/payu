@@ -1,241 +1,145 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
+  SafeAreaView,
   Alert,
-  FlatList,
-  ActivityIndicator,
 } from "react-native";
-import { Audio } from "expo-av";
-import * as FileSystem from "expo-file-system";
+import Ionicons from "react-native-vector-icons/Ionicons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
-import { Ionicons } from "@expo/vector-icons";
 
-export default function ProfileScreen() {
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [recordings, setRecordings] = useState<
-    { uri: string; duration: number; uploading: boolean }[]
-  >([]);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [timer, setTimer] = useState(0);
-  const [isPlaying, setIsPlaying] = useState<number | null>(null);
+// ✅ Replace with your FastAPI backend URL
+const BASE_URL = "http://192.168.35.164:8000";
 
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (recording) {
-      interval = setInterval(() => {
-        setTimer((prev) => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(interval);
+const TransactionScreen = ({ navigation }: { navigation: any }) => {
+  const [receiver, setReceiver] = useState("");
+  const [amount, setAmount] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  // ✅ Handle Money Transfer
+  const handleTransfer = async () => {
+    if (!receiver || !amount) {
+      Alert.alert("Error", "Please enter all fields");
+      return;
     }
-    return () => clearInterval(interval);
-  }, [recording]);
 
-  async function startRecording() {
+    setLoading(true);
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "You need to allow microphone access.");
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Session Expired", "Please log in again.");
+        navigation.replace("Login");
         return;
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const newRecording = new Audio.Recording();
-      await newRecording.prepareToRecordAsync(Audio.RECORDING_OPTIONS_PRESET_HIGH_QUALITY);
-      await newRecording.startAsync();
-      setRecording(newRecording);
-      setTimer(0);
-    } catch (error) {
-      console.error("Failed to start recording:", error);
-      Alert.alert("Error", "Could not start recording.");
-    }
-  }
-
-  async function stopRecording() {
-    try {
-      if (!recording) return;
-
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      setRecordings((prev) => [
-        ...prev,
-        { uri: uri as string, duration: timer, uploading: false },
-      ]);
-      setRecording(null);
-      setTimer(0);
-      Alert.alert("Recording Saved", `File saved at: ${uri}`);
-    } catch (error) {
-      console.error("Stopping error:", error);
-      Alert.alert("Error", "Failed to stop recording.");
-    }
-  }
-
-  async function playRecording(uri: string, index: number) {
-    try {
-      if (!uri) return;
-
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: false,
-      });
-
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        { shouldPlay: true, volume: 1.0 }
-      );
-
-      setSound(sound);
-      setIsPlaying(index);
-
-      await sound.setVolumeAsync(1.0);
-
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (!status.isLoaded) return;
-        if (status.didJustFinish) {
-          setIsPlaying(null);
-          sound.unloadAsync();
-        }
-      });
-
-      await sound.playAsync();
-    } catch (error) {
-      console.error("Playback error:", error);
-      Alert.alert("Error", "Failed to play recording.");
-    }
-  }
-
-  async function uploadRecording(uri: string, index: number) {
-    try {
-      setRecordings((prev) =>
-        prev.map((rec, idx) =>
-          idx === index ? { ...rec, uploading: true } : rec
-        )
-      );
-
-      const fileInfo = await FileSystem.getInfoAsync(uri);
-      if (!fileInfo.exists) {
-        Alert.alert("Upload Failed", "File not found.");
-        return;
-      }
-
-      const formData = new FormData();
-      formData.append("file", {
-        uri,
-        name: `recording-${Date.now()}.mp3`,
-        type: "audio/mp3",
-      } as any);
-
-      await axios.post(
-        "https://your-backend-url.com/upload",
-        formData,
+      const response = await axios.post(
+        `${BASE_URL}/transaction/send`,
         {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          receiver_identifier: receiver,
+          amount: parseFloat(amount),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      Alert.alert("Upload Success", "Your file has been uploaded.");
-      setRecordings((prev) =>
-        prev.map((rec, idx) =>
-          idx === index ? { ...rec, uploading: false } : rec
-        )
-      );
-    } catch (error) {
-      console.error("Upload error:", error);
-      Alert.alert("Upload Failed", "Could not upload the file.");
-      setRecordings((prev) =>
-        prev.map((rec, idx) =>
-          idx === index ? { ...rec, uploading: false } : rec
-        )
-      );
+      Alert.alert("Success", "Transaction Successful!");
+      setReceiver("");
+      setAmount("");
+      navigation.goBack();
+    } catch (error: any) {
+      console.error("Transaction Error:", error);
+      Alert.alert("Error", error.response?.data?.detail || "Transaction failed");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Audio Recorder</Text>
-
-      <Text style={styles.timer}>
-        {recording ? `Recording: ${timer}s` : "Not Recording"}
-      </Text>
-
-      <FlatList
-        data={recordings}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={({ item, index }) => (
-          <View style={styles.recordingItem}>
-            <Text style={styles.recordingText}>
-              Recording {index + 1} - {item.duration}s
-            </Text>
-            <TouchableOpacity
-              style={styles.playButton}
-              onPress={() => playRecording(item.uri, index)}
-              disabled={isPlaying === index}
-            >
-              <Ionicons
-                name={isPlaying === index ? "pause-circle" : "play-circle"}
-                size={28}
-                color="white"
-              />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.uploadButton}
-              onPress={() => uploadRecording(item.uri, index)}
-              disabled={item.uploading}
-            >
-              {item.uploading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <Ionicons name="cloud-upload" size={26} color="white" />
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-      />
-
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.button, styles.startButton]}
-          onPress={startRecording}
-          disabled={recording !== null}
-        >
-          <Text style={styles.buttonText}>Start</Text>
+    <SafeAreaView style={styles.safeContainer}>
+      <View style={styles.container}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
-
+        
+        <Text style={styles.title}>Send Money</Text>
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Receiver's Phone or Wallet ID"
+          placeholderTextColor="#BBB"
+          value={receiver}
+          onChangeText={setReceiver}
+        />
+        
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Amount"
+          placeholderTextColor="#BBB"
+          keyboardType="numeric"
+          value={amount}
+          onChangeText={setAmount}
+        />
+        
         <TouchableOpacity
-          style={[styles.button, styles.stopButton]}
-          onPress={stopRecording}
-          disabled={recording === null}
+          style={styles.transferButton}
+          onPress={handleTransfer}
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Stop</Text>
+          <Text style={styles.transferText}>{loading ? "Processing..." : "Send Money"}</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </SafeAreaView>
   );
-}
+};
+
+export default TransactionScreen;
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#fff", paddingHorizontal: 20 },
-  title: { fontSize: 22, fontWeight: "bold", marginBottom: 20, color: "#1976D2" },
-  timer: { fontSize: 16, color: "#D32F2F", marginBottom: 20 },
-  recordingItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", width: "90%", padding: 10, borderRadius: 8, backgroundColor: "#E3F2FD", marginBottom: 10 },
-  buttonContainer: { position: "absolute", bottom: 30, flexDirection: "row", justifyContent: "space-between", width: "80%" },
-  button: { flex: 1, paddingVertical: 10, marginHorizontal: 8, borderRadius: 8, alignItems: "center" },
-  startButton: { backgroundColor: "#4CAF50" },
-  stopButton: { backgroundColor: "#D32F2F" },
-  uploadButton: { backgroundColor: "#FFA500", padding: 8, borderRadius: 8 },
-  playButton: { backgroundColor: "#388E3C", padding: 8, borderRadius: 8 },
-  buttonText: { color: "#fff", fontSize: 16, fontWeight: "bold" },
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#120E43",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  container: {
+    width: "90%",
+    padding: 20,
+    backgroundColor: "#1E1B48",
+    borderRadius: 10,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    marginVertical: 20,
+  },
+  input: {
+    width: "100%",
+    height: 50,
+    backgroundColor: "#29247D",
+    color: "white",
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  transferButton: {
+    backgroundColor: "#D32F2F",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  transferText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
 });
-
-export default ProfileScreen;

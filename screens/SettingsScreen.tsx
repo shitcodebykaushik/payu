@@ -15,14 +15,14 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 // ✅ Replace with your FastAPI backend URL
-const BASE_URL = "http://192.168.35.164:8000"; 
+const BASE_URL = "http://192.168.35.164:8000";
+const WS_URL = "ws://192.168.35.164:8000/ws"; // ✅ WebSocket URL
 
-// ✅ Profile Screen Component
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
 
-  // ✅ Fetch User Profile
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -38,6 +38,18 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         });
 
         setUserData(response.data);
+
+        const ws = new WebSocket(`${WS_URL}/${response.data.user_id}`);
+        setSocket(ws);
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.balance !== undefined) {
+            setUserData((prev: any) => ({ ...prev, balance: data.balance }));
+          }
+        };
+
+        ws.onclose = () => console.log("WebSocket Disconnected");
       } catch (error: any) {
         console.error("Profile Fetch Error:", error);
         Alert.alert("Error", error.response?.data?.detail || "Failed to fetch profile");
@@ -49,11 +61,10 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     fetchUserProfile();
   }, []);
 
-  // ✅ Handle Logout
   const handleLogout = async () => {
     await AsyncStorage.removeItem("token");
     Alert.alert("Logged Out", "You have been logged out successfully!");
-    navigation.replace("Login"); // Redirect to Login screen
+    navigation.replace("Login");
   };
 
   if (loading) {
@@ -67,18 +78,13 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* 🔙 Header Section */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="black" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Profile</Text>
-          <TouchableOpacity>
-            <Ionicons name="ellipsis-horizontal" size={24} color="black" />
-          </TouchableOpacity>
         </View>
 
-        {/* 👤 User Info */}
         <View style={styles.profileContainer}>
           <Image source={require("../Asset/Used/police.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
@@ -87,7 +93,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           </View>
         </View>
 
-        {/* 🔢 Wallet & Contact Info */}
         <View style={styles.infoContainer}>
           <Text style={styles.infoLabel}>📩 Email:</Text>
           <Text style={styles.infoText}>{userData?.email || "Not Available"}</Text>
@@ -99,18 +104,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.infoText}>{userData?.wallet_address || "Not Available"}</Text>
         </View>
 
-        {/* ⚙️ Profile Options */}
         <View style={styles.menuContainer}>
-          {/* Privacy */}
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="shield-checkmark" size={22} color="black" />
-              <Text style={styles.menuText}>Security & Privacy</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="gray" />
-          </TouchableOpacity>
-
-          {/* Log Out */}
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <View style={styles.menuLeft}>
               <Ionicons name="log-out" size={22} color="red" />
@@ -124,99 +118,24 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   );
 };
 
-// ✅ Ensure only one `export default`
 export default ProfileScreen;
 
-// ✅ Styles
 const styles = StyleSheet.create({
-  safeContainer: {
-    flex: 1,
-    backgroundColor: "#F5F5F5",
-  },
-  container: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-  },
-  loaderContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  profileContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 20,
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 10,
-    elevation: 2,
-  },
-  profileImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 50,
-  },
-  profileTextContainer: {
-    flex: 1,
-    marginLeft: 15,
-  },
-  profileName: {
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  profileRole: {
-    fontSize: 16,
-    color: "gray",
-  },
-  infoContainer: {
-    marginTop: 20,
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 10,
-    elevation: 2,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: "bold",
-    marginTop: 10,
-    color: "#333",
-  },
-  infoText: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 10,
-  },
-  menuContainer: {
-    marginTop: 20,
-    backgroundColor: "#FFF",
-    padding: 15,
-    borderRadius: 10,
-    elevation: 2,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E0E0E0",
-  },
-  menuLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  menuText: {
-    fontSize: 16,
-    fontWeight: "500",
-    marginLeft: 10,
-  },
+  safeContainer: { flex: 1, backgroundColor: "#F5F5F5" },
+  container: { paddingHorizontal: 20, paddingTop: 20 },
+  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  headerTitle: { fontSize: 18, fontWeight: "bold" },
+  profileContainer: { flexDirection: "row", alignItems: "center", marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
+  profileImage: { width: 60, height: 60, borderRadius: 50 },
+  profileTextContainer: { flex: 1, marginLeft: 15 },
+  profileName: { fontSize: 20, fontWeight: "bold" },
+  profileRole: { fontSize: 16, color: "gray" },
+  infoContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
+  infoLabel: { fontSize: 14, fontWeight: "bold", marginTop: 10, color: "#333" },
+  infoText: { fontSize: 16, color: "#555", marginBottom: 10 },
+  menuContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
+  menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#E0E0E0" },
+  menuLeft: { flexDirection: "row", alignItems: "center" },
+  menuText: { fontSize: 16, fontWeight: "500", marginLeft: 10 },
 });
