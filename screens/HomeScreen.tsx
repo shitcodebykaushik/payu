@@ -7,11 +7,14 @@ import {
   SafeAreaView,
   Image,
   ScrollView,
+  FlatList,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import moment from "moment";
 
 // ✅ Replace with your FastAPI backend URL
 const BASE_URL = "http://192.168.35.164:8000";
@@ -19,30 +22,59 @@ const BASE_URL = "http://192.168.35.164:8000";
 const HomeScreen = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState<any>(null);
   const [balanceVisible, setBalanceVisible] = useState(false);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [showTransactions, setShowTransactions] = useState(false); // ✅ New state to toggle visibility
 
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-        if (!token) {
-          Alert.alert("Session Expired", "Please log in again.");
-          navigation.replace("Login");
-          return;
-        }
-
-        const response = await axios.get(`${BASE_URL}/user/profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        setUserData(response.data);
-      } catch (error: any) {
-        console.error("Profile Fetch Error:", error);
-        Alert.alert("Error", "Failed to fetch profile");
-      }
-    };
-
     fetchUserProfile();
   }, []);
+
+  // ✅ Fetch User Profile
+  const fetchUserProfile = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Session Expired", "Please log in again.");
+        navigation.replace("Login");
+        return;
+      }
+
+      const response = await axios.get(`${BASE_URL}/user/profile`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setUserData(response.data);
+    } catch (error: any) {
+      console.error("Profile Fetch Error:", error);
+      Alert.alert("Error", "Failed to fetch profile");
+    }
+  };
+
+  // ✅ Fetch Transaction History
+  const fetchTransactions = async () => {
+    setLoadingTransactions(true);
+    try {
+      const token = await AsyncStorage.getItem("token");
+      if (!token) {
+        Alert.alert("Session Expired", "Please log in again.");
+        navigation.replace("Login");
+        return;
+      }
+
+      const response = await axios.get(`${BASE_URL}/transaction/history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setTransactions(response.data);
+      setShowTransactions(true); // ✅ Show transactions when data is fetched
+    } catch (error: any) {
+      console.error("Transaction Fetch Error:", error);
+      Alert.alert("Error", "Failed to fetch transactions.");
+    } finally {
+      setLoadingTransactions(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeContainer}>
@@ -67,24 +99,48 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
           </View>
         </View>
 
-        {/* 📌 Sort Transactions */}
-        <TouchableOpacity style={styles.actionCard}>
-          <Text style={styles.actionText}>Sort your transactions</Text>
-          <Text style={styles.actionSubText}>Get points for sorting transactions</Text>
-          <Ionicons name="chevron-forward" size={22} color="white" />
+        {/* 📌 Toggle Transaction History Button */}
+        <TouchableOpacity
+          style={styles.fetchButton}
+          onPress={showTransactions ? () => setShowTransactions(false) : fetchTransactions} // ✅ Toggle visibility
+        >
+          {loadingTransactions ? (
+            <ActivityIndicator color="white" />
+          ) : (
+            <Text style={styles.fetchButtonText}>
+              {showTransactions ? "Close Transaction History" : "View Transaction History"}
+            </Text>
+          )}
         </TouchableOpacity>
 
-        {/* 🏦 Budget Section */}
-        <View style={styles.budgetCard}>
-          <Text style={styles.budgetTitle}>My Budget</Text>
-          <Text style={styles.budgetAmount}>₹ {userData?.balance || "0.00"}</Text>
-          <Text style={styles.budgetSubText}>Left out of ₹80,888 budgeted</Text>
-        </View>
-
-        {/* 💸 Send Money Button */}
-        <TouchableOpacity style={styles.sendMoneyButton} onPress={() => navigation.navigate("SendMoney") }>
-          <Text style={styles.sendMoneyText}>Send Money</Text>
-        </TouchableOpacity>
+        {/* 🕒 Transaction History List */}
+        {showTransactions && transactions.length > 0 && (
+          <View style={styles.transactionContainer}>
+            <Text style={styles.sectionTitle}>Transaction History</Text>
+            <FlatList
+              data={transactions}
+              keyExtractor={(item, index) => index.toString()}
+              renderItem={({ item }) => (
+                <View style={styles.transactionCard}>
+                  <View style={styles.transactionRow}>
+                    <Ionicons name="arrow-forward-circle" size={24} color="#4CAF50" />
+                    <View style={styles.transactionDetails}>
+                      <Text style={styles.transactionText}>
+                        <Text style={styles.senderText}>{item.sender_name}</Text> →{" "}
+                        <Text style={styles.receiverText}>{item.receiver_name}</Text>
+                      </Text>
+                      <Text style={styles.transactionMessage}>{item.message}</Text>
+                      <Text style={styles.transactionTimestamp}>
+                        {moment(item.timestamp).format("DD MMM YYYY, hh:mm A")}
+                      </Text>
+                    </View>
+                    <Text style={styles.amountText}>₹ {item.amount.toFixed(2)}</Text>
+                  </View>
+                </View>
+              )}
+            />
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -92,6 +148,7 @@ const HomeScreen = ({ navigation }: { navigation: any }) => {
 
 export default HomeScreen;
 
+// ✅ Styles
 const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
@@ -140,55 +197,64 @@ const styles = StyleSheet.create({
     color: "white",
     marginRight: 10,
   },
-  actionCard: {
-    backgroundColor: "#29247D",
+  fetchButton: {
+    backgroundColor: "#4CAF50",
+    padding: 12,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  fetchButtonText: {
+    color: "white",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  transactionContainer: {
+    marginTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "white",
+    marginBottom: 10,
+  },
+  transactionCard: {
+    backgroundColor: "#1E1B48",
     padding: 15,
     borderRadius: 10,
+    marginBottom: 10,
+  },
+  transactionRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: 20,
   },
-  actionText: {
+  transactionDetails: {
+    flex: 1,
+    marginLeft: 10,
+  },
+  transactionText: {
+    fontSize: 16,
+    color: "white",
+    fontWeight: "bold",
+  },
+  senderText: {
+    color: "#FFD700",
+  },
+  receiverText: {
+    color: "#4CAF50",
+  },
+  transactionMessage: {
+    fontSize: 14,
+    color: "#BBB",
+  },
+  transactionTimestamp: {
+    fontSize: 12,
+    color: "#888",
+  },
+  amountText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "white",
-  },
-  actionSubText: {
-    fontSize: 12,
-    color: "#BBB",
-  },
-  budgetCard: {
-    backgroundColor: "#1E1B48",
-    padding: 20,
-    borderRadius: 10,
-    marginTop: 20,
-  },
-  budgetTitle: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "white",
-  },
-  budgetAmount: {
-    fontSize: 22,
-    fontWeight: "bold",
     color: "#FFD700",
-    marginTop: 5,
-  },
-  budgetSubText: {
-    fontSize: 12,
-    color: "#BBB",
-  },
-  sendMoneyButton: {
-    backgroundColor: "#D32F2F",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 30,
-  },
-  sendMoneyText: {
-    color: "white",
-    fontSize: 18,
-    fontWeight: "bold",
   },
 });
