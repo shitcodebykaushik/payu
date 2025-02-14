@@ -16,12 +16,10 @@ import axios from "axios";
 
 // ✅ Replace with your FastAPI backend URL
 const BASE_URL = "http://192.168.35.164:8000";
-const WS_URL = "ws://192.168.35.164:8000/ws"; // ✅ WebSocket URL
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -38,18 +36,6 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         });
 
         setUserData(response.data);
-
-        const ws = new WebSocket(`${WS_URL}/${response.data.user_id}`);
-        setSocket(ws);
-
-        ws.onmessage = (event) => {
-          const data = JSON.parse(event.data);
-          if (data.balance !== undefined) {
-            setUserData((prev: any) => ({ ...prev, balance: data.balance }));
-          }
-        };
-
-        ws.onclose = () => console.log("WebSocket Disconnected");
       } catch (error: any) {
         console.error("Profile Fetch Error:", error);
         Alert.alert("Error", error.response?.data?.detail || "Failed to fetch profile");
@@ -89,7 +75,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Image source={require("../Asset/Used/police.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
             <Text style={styles.profileName}>{userData?.name || "User"}</Text>
-            <Text style={styles.profileRole}>Wallet Balance: ₹{userData?.balance || "0.00"}</Text>
+            <Text style={styles.profileRole}>User ID: {userData?.user_id || "N/A"}</Text>
           </View>
         </View>
 
