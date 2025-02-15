@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,9 +8,7 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
-  Modal,
 } from "react-native";
-import { CameraView, Camera } from "expo-camera";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -19,20 +17,11 @@ import axios from "axios";
 const BASE_URL = "http://192.168.35.164:8000";
 
 const TransactionScreen = ({ navigation }: { navigation: any }) => {
-  const [receiver, setReceiver] = useState(""); // ✅ Manual or QR input
+  const [receiver, setReceiver] = useState("");
   const [amount, setAmount] = useState("");
   const [receiverData, setReceiverData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [checkingUser, setCheckingUser] = useState(false);
-  const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasCameraPermission(status === "granted");
-    })();
-  }, []);
 
   // ✅ Validate Receiver (Check if User Exists)
   const validateReceiver = async () => {
@@ -76,7 +65,7 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      await axios.post(
+      const response = await axios.post(
         `${BASE_URL}/transaction/send`,
         {
           receiver_identifier: receiver,
@@ -100,13 +89,6 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
     }
   };
 
-  // ✅ Handle QR Code Scanning
-  const handleBarCodeScanned = ({ data }: { data: string }) => {
-    setReceiver(data); // ✅ Auto-fill receiver from QR code
-    setIsScannerOpen(false); // ✅ Close Scanner
-    validateReceiver(); // ✅ Validate user after scanning
-  };
-
   return (
     <SafeAreaView style={styles.safeContainer}>
       <View style={styles.container}>
@@ -118,20 +100,14 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
         <Text style={styles.title}>Send Money</Text>
 
         {/* 📞 Receiver Input */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter Receiver's Phone or Wallet ID"
-            placeholderTextColor="#BBB"
-            value={receiver}
-            onChangeText={setReceiver}
-            onBlur={validateReceiver} // ✅ Auto-validate on blur
-          />
-          {/* 📷 QR Scanner Button */}
-          <TouchableOpacity style={styles.qrButton} onPress={() => setIsScannerOpen(true)}>
-            <Ionicons name="qr-code-outline" size={28} color="white" />
-          </TouchableOpacity>
-        </View>
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Receiver's Phone or Wallet ID"
+          placeholderTextColor="#BBB"
+          value={receiver}
+          onChangeText={setReceiver}
+          onBlur={validateReceiver} // ✅ Auto-validate on blur
+        />
 
         {/* 🔍 Validating Receiver */}
         {checkingUser && <ActivityIndicator size="small" color="white" />}
@@ -164,27 +140,6 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.transferText}>{loading ? "Processing..." : "Send Money"}</Text>
         </TouchableOpacity>
       </View>
-
-      {/* 🔲 QR Scanner Modal */}
-      <Modal animationType="slide" transparent={false} visible={isScannerOpen}>
-        <View style={styles.modalContainer}>
-          {hasCameraPermission === null ? (
-            <ActivityIndicator size="large" color="white" />
-          ) : hasCameraPermission === false ? (
-            <Text style={styles.permissionText}>No access to camera</Text>
-          ) : (
-            <CameraView
-              style={styles.camera}
-              onBarcodeScanned={handleBarCodeScanned}
-            />
-          )}
-
-          {/* ❌ Close Scanner Button */}
-          <TouchableOpacity style={styles.closeScannerButton} onPress={() => setIsScannerOpen(false)}>
-            <Text style={styles.closeScannerText}>Close Scanner</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
@@ -192,19 +147,56 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
 export default TransactionScreen;
 
 const styles = StyleSheet.create({
-  safeContainer: { flex: 1, backgroundColor: "#120E43", justifyContent: "center", alignItems: "center" },
-  container: { width: "90%", padding: 20, backgroundColor: "#1E1B48", borderRadius: 10, elevation: 5 },
-  title: { fontSize: 22, fontWeight: "bold", color: "white", textAlign: "center", marginVertical: 20 },
-  inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#29247D", borderRadius: 8, marginBottom: 15 },
-  input: { flex: 1, height: 50, color: "white", paddingHorizontal: 15, fontSize: 16 },
-  qrButton: { padding: 10, backgroundColor: "#007AFF", borderTopRightRadius: 8, borderBottomRightRadius: 8 },
-  receiverInfo: { backgroundColor: "#344573", padding: 10, borderRadius: 8, marginBottom: 15 },
-  receiverText: { color: "#FFF", fontSize: 16 },
-  transferButton: { backgroundColor: "#D32F2F", paddingVertical: 15, borderRadius: 10, alignItems: "center", marginTop: 20 },
-  transferText: { color: "white", fontSize: 18, fontWeight: "bold" },
-  modalContainer: { flex: 1, backgroundColor: "black", justifyContent: "center", alignItems: "center" },
-  camera: { flex: 1, width: "100%" },
-  permissionText: { color: "white", fontSize: 18 },
-  closeScannerButton: { backgroundColor: "#D32F2F", padding: 10, alignItems: "center", marginTop: 20 },
-  closeScannerText: { color: "white", fontSize: 18 },
-});
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#120E43",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  container: {
+    width: "90%",
+    padding: 20,
+    backgroundColor: "#1E1B48",
+    borderRadius: 10,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "white",
+    textAlign: "center",
+    marginVertical: 20,
+  },
+  input: {
+    width: "100%",
+    height: 50,
+    backgroundColor: "#29247D",
+    color: "white",
+    borderRadius: 8,
+    paddingHorizontal: 15,
+    fontSize: 16,
+    marginBottom: 15,
+  },
+  transferButton: {
+    backgroundColor: "#D32F2F",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  transferText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  receiverInfo: {
+    backgroundColor: "#344573",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  receiverText: {
+    color: "#FFF",
+    fontSize: 16,
+  },
+}); 
