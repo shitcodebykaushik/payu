@@ -3,7 +3,7 @@ import { View, Text, Image, StyleSheet, ActivityIndicator } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { LinearGradient } from 'expo-linear-gradient';
 
-// ✅ Define navigation type
+
 type RootStackParamList = {
   Splash: undefined;
   Signup: undefined;
@@ -15,23 +15,23 @@ type Props = {
   navigation: SplashScreenNavigationProp;
 };
 
-// ✅ Define the function as a constant before export
+
 const SplashScreen = ({ navigation }: Props) => {
   
   useEffect(() => {
     setTimeout(() => {
-      navigation.replace('Signup'); // Navigate to Signup after 3 seconds
+      navigation.replace('Signup'); 
     }, 3000);
   }, []);
 
   return (
     <LinearGradient colors={['#141E30', '#243B55']} style={styles.container}>
-      {/* Circular Logo */}
+      { }
       <View style={styles.logoContainer}>
         <Image source={require('../Asset/Used/money-bag.png')} style={styles.logo} />
       </View>
 
-      {/* Title and Subtitle */}
+      { }
       <Text style={styles.title}>SecurePay</Text>  
       <Text style={styles.subtitle}>Decentralized. Fast. Secure.</Text>  
 

@@ -27,7 +27,7 @@ type Props = {
 };
 
 // ✅ API BASE URL (Ensure http:// is included)
-const BASE_URL = "http://192.168.35.164:8000"; // Replace with your laptop's local IP
+const BASE_URL = "http://172.20.10.7:8000"; // Replace with your laptop's local IP
 
 function SignupScreen({ navigation }: Props) {
   const [name, setName] = useState('');

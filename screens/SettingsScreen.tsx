@@ -16,7 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 // ✅ Replace with your FastAPI backend URL
-const BASE_URL = "http://192.168.35.164:8000";
+const BASE_URL = "http://172.20.10.7:8000";
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState<any>(null);

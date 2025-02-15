@@ -18,8 +18,7 @@ import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
-// ✅ Replace with your FastAPI backend URL
-const BASE_URL = "http://192.168.35.164:8000";
+const BASE_URL = "http://172.20.10.7:8000";
 
 const TransactionScreen = ({ navigation }: { navigation: any }) => {
   const [receiver, setReceiver] = useState("");

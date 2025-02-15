@@ -32,7 +32,7 @@ type Props = {
 };
 
 // ✅ Replace with Your FastAPI Backend IP (use your actual local IP)
-const BASE_URL = "http://192.168.35.164:8000"; // Ensure your backend is running on this IP
+const BASE_URL = "http://172.20.10.7:8000"; // Ensure your backend is running on this IP
 
 // ✅ LoginScreen Component
 const LoginScreen = ({ navigation }: Props) => {
@@ -129,10 +129,7 @@ const LoginScreen = ({ navigation }: Props) => {
   );
 };
 
-// ✅ Ensure ONLY ONE Default Export
 export default LoginScreen;
-
-// ✅ Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
