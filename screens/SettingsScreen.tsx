@@ -16,11 +16,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 
 // ✅ Replace with your FastAPI backend URL
-const BASE_URL = "http://172.20.10.7:8000";
+const BASE_URL = "http://192.168.138.164:8000";
+const WS_URL = "ws://192.168.138.164:8000/ws"; // ✅ WebSocket URL
 
 const ProfileScreen = ({ navigation }: { navigation: any }) => {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
     const fetchUserProfile = async () => {
@@ -37,6 +39,19 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         });
 
         setUserData(response.data);
+
+        // ✅ Establish WebSocket Connection
+        const ws = new WebSocket(`${WS_URL}/${response.data.user_id}`);
+        setSocket(ws);
+
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          if (data.balance !== undefined) {
+            setUserData((prev: any) => ({ ...prev, balance: data.balance }));
+          }
+        };
+
+        ws.onclose = () => console.log("WebSocket Disconnected");
       } catch (error: any) {
         console.error("Profile Fetch Error:", error);
         Alert.alert("Error", error.response?.data?.detail || "Failed to fetch profile");
@@ -46,10 +61,17 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
     };
 
     fetchUserProfile();
+
+    return () => {
+      if (socket) {
+        socket.close();
+      }
+    };
   }, []);
 
   const handleLogout = async () => {
     await AsyncStorage.removeItem("token");
+    if (socket) socket.close();
     Alert.alert("Logged Out", "You have been logged out successfully!");
     navigation.replace("Login");
   };
@@ -67,53 +89,48 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
       <ScrollView contentContainerStyle={styles.container}>
         {/* 🔙 Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="black" />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={26} color="black" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.headerTitle}>My Profile</Text>
         </View>
 
         {/* 👤 User Info */}
         <View style={styles.profileContainer}>
-          <Image source={require("../Asset/Used/account.png")} style={styles.profileImage} />
+          <Image source={require("../Asset/Used/customer-service.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
             <Text style={styles.profileName}>{userData?.name || "User"}</Text>
-            <Text style={styles.profileRole}>User ID: {userData?.user_id || "N/A"}</Text>
+            <Text style={styles.profileRole}>Wallet Balance: ₹{userData?.balance || "0.00"}</Text>
           </View>
         </View>
 
         {/* 📩 User Details */}
         <View style={styles.infoContainer}>
-          <Text style={styles.infoLabel}>📩 Email:</Text>
+          <Text style={styles.infoLabel}>📩 Email</Text>
           <Text style={styles.infoText}>{userData?.email || "Not Available"}</Text>
 
-          <Text style={styles.infoLabel}>📞 Phone Number:</Text>
+          <Text style={styles.infoLabel}>📞 Phone Number</Text>
           <Text style={styles.infoText}>{userData?.phone_number || "Not Available"}</Text>
 
-          <Text style={styles.infoLabel}>💳 Wallet Address:</Text>
+          <Text style={styles.infoLabel}>💳 Wallet Address</Text>
           <Text style={styles.infoText}>{userData?.wallet_address || "Not Available"}</Text>
         </View>
 
-        {/* 🔳 QR Code Generator */}
+        {/* 🔳 QR Code for Transactions */}
         <View style={styles.qrContainer}>
           <Text style={styles.qrTitle}>Scan QR Code to Send Money</Text>
           {userData?.wallet_address ? (
-            <QRCode value={userData.wallet_address} size={200} backgroundColor="white" />
+            <QRCode value={userData.wallet_address} size={180} backgroundColor="white" />
           ) : (
             <Text style={styles.qrError}>Wallet address not available</Text>
           )}
         </View>
 
         {/* 🔘 Logout */}
-        <View style={styles.menuContainer}>
-          <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-            <View style={styles.menuLeft}>
-              <Ionicons name="log-out" size={22} color="red" />
-              <Text style={[styles.menuText, { color: "red" }]}>Log Out</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={22} color="gray" />
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <Ionicons name="log-out-outline" size={24} color="white" />
+          <Text style={styles.logoutText}>Log Out</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -122,31 +139,109 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
 export default ProfileScreen;
 
 const styles = StyleSheet.create({
-  safeContainer: { flex: 1, backgroundColor: "#F5F5F5" },
-  container: { paddingHorizontal: 20, paddingTop: 20 },
-  loaderContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  headerTitle: { fontSize: 18, fontWeight: "bold" },
-  profileContainer: { flexDirection: "row", alignItems: "center", marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
-  profileImage: { width: 60, height: 60, borderRadius: 50 },
-  profileTextContainer: { flex: 1, marginLeft: 15 },
-  profileName: { fontSize: 20, fontWeight: "bold" },
-  profileRole: { fontSize: 16, color: "gray" },
-  infoContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
-  infoLabel: { fontSize: 14, fontWeight: "bold", marginTop: 10, color: "#333" },
-  infoText: { fontSize: 16, color: "#555", marginBottom: 10 },
-  qrContainer: {
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#F8F9FA",
+  },
+  container: {
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginLeft: 15,
+    color: "#333",
+  },
+  profileContainer: {
+    flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFF",
     padding: 15,
     borderRadius: 10,
-    marginTop: 20,
-    elevation: 2,
+    elevation: 3,
+    shadowColor: "#000",
   },
-  qrTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 10, color: "#333" },
-  qrError: { fontSize: 14, color: "red" },
-  menuContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
-  menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#E0E0E0" },
-  menuLeft: { flexDirection: "row", alignItems: "center" },
-  menuText: { fontSize: 16, fontWeight: "500", marginLeft: 10 },
+  profileImage: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+  },
+  profileTextContainer: {
+    marginLeft: 15,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#333",
+  },
+  profileRole: {
+    fontSize: 16,
+    color: "#666",
+    marginTop: 5,
+  },
+  infoContainer: {
+    marginTop: 20,
+    backgroundColor: "#FFF",
+    padding: 20,
+    borderRadius: 10,
+    elevation: 3,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#444",
+    marginBottom: 5,
+  },
+  infoText: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 15,
+  },
+  qrContainer: {
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 20,
+    borderRadius: 10,
+    marginTop: 20,
+    elevation: 3,
+  },
+  qrTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 10,
+    color: "#333",
+  },
+  qrError: {
+    fontSize: 14,
+    color: "red",
+  },
+  logoutButton: {
+    flexDirection: "row",
+    backgroundColor: "#D32F2F",
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 30,
+  },
+  logoutText: {
+    color: "white",
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 10,
+  },
 });
