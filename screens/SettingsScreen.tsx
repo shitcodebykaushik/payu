@@ -72,7 +72,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
         </View>
 
         <View style={styles.profileContainer}>
-          <Image source={require("../Asset/Used/police.png")} style={styles.profileImage} />
+          <Image source={require("../Asset/Used/account.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
             <Text style={styles.profileName}>{userData?.name || "User"}</Text>
             <Text style={styles.profileRole}>User ID: {userData?.user_id || "N/A"}</Text>
