@@ -1,104 +1,103 @@
 import React, { useEffect } from 'react';
-import { View, Text, Image, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, StatusBar } from 'react-native';
+import LottieView from 'lottie-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { LinearGradient } from 'expo-linear-gradient';
 
 
+
+// Define navigation types
 type RootStackParamList = {
-  Splash: undefined;
-  Signup: undefined;
+  Onboarding: undefined;
+  EmailAuth: undefined;
+  VenSync: undefined;
+  SignUp: undefined;
 };
 
-type SplashScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Splash'>;
+type SplashScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Onboarding'>;
 
-type Props = {
+interface Props {
   navigation: SplashScreenNavigationProp;
-};
+}
 
-
-const SplashScreen = ({ navigation }: Props) => {
-  
+const SplashScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
-    setTimeout(() => {
-      navigation.replace('Signup'); 
-    }, 3000);
-  }, []);
+    const checkNavigationFlow = async () => {
+      try {
+        const isFirstTime = await AsyncStorage.getItem('isFirstTime');
+        const token = await AsyncStorage.getItem('token');
+
+        if (isFirstTime === null) {
+          // First-time user
+          await AsyncStorage.setItem('isFirstTime', 'false');
+          setTimeout(() => {
+            navigation.navigate('Signup');
+          }, 2000);
+        } else if (token) {
+          try {
+            const profile = await AsyncStorage.getItem('profile');
+            const hasProfile = profile === 'true'; // Convert string to boolean
+
+            setTimeout(() => {
+              navigation.navigate(hasProfile ? 'VenSync' : 'Signup');
+            }, 2000);
+          } catch (error) {
+            console.error('Error fetching profile:', error);
+          }
+        } else {
+          setTimeout(() => {
+            navigation.replace('Signup');
+          }, 3000);
+        }
+      } catch (error) {
+        console.error('Error in SplashScreen navigation logic:', error);
+        navigation.replace('SignUp'); // Fallback route
+      }
+    };
+
+    checkNavigationFlow();
+  }, [navigation]);
 
   return (
-    <LinearGradient colors={['#141E30', '#243B55']} style={styles.container}>
-      { }
-      <View style={styles.logoContainer}>
-        <Image source={require('../Asset/Used/money-bag.png')} style={styles.logo} />
-      </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      { }
-      <Text style={styles.title}>SecurePay</Text>  
-      <Text style={styles.subtitle}>Decentralized. Fast. Secure.</Text>  
+      {/* Lottie Animation - Full Screen */}
+      <LottieView
+        source={require('../Asset/Asset/Splash Screen Annimation2.json')}
+        autoPlay
+        loop
+        style={styles.animation}
+        resizeMode="cover"
+      />
 
-      {/* Bottom Section */}
-      <View style={styles.bottomContainer}>
-        <Image source={require('../Asset/Used/money-bag.png')} style={styles.securityLogo} />
-        <Text style={styles.securityText}>Powered by Blockchain Security</Text>
-        <ActivityIndicator size="large" color="white" style={styles.loader} />
-      </View>
-    </LinearGradient>
+      {/* Bottom Overlay View */}
+      <View style={styles.bottomOverlay} />
+      {/* <Text>PayKr</Text> */}
+    </View>
   );
 };
 
-// ✅ Ensure only one `export default`
 export default SplashScreen;
 
-// ✅ Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
   },
-  logoContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60, // Makes it a perfect circle
-    backgroundColor: '#4CAF50', // Secure Green for Trust and Finance
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20, // More space between logo and text
-    elevation: 5,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-    borderRadius: 50, // Ensures image fits inside the circular container
-    resizeMode: 'contain',
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    color: '#4CAF50', // Green for Secure Finance
-  },
-  subtitle: {
-    fontSize: 18,
-    color: 'white',
-    marginTop: 5,
-    opacity: 0.8,
-  },
-  bottomContainer: {
+  animation: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
     position: 'absolute',
-    bottom: 50,
-    alignItems: 'center',
   },
-  securityLogo: {
-    width: 100, // Increased for better visibility
-    height: 60,
-    resizeMode: 'contain',
-  },
-  securityText: {
-    fontSize: 16,
-    color: 'white',
-    marginTop: 5,
-    opacity: 0.8,
-  },
-  loader: {
-    marginTop: 10,
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 70,
+    backgroundColor: 'white',
+    zIndex: 999,
   },
 });
