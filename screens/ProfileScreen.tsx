@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,7 +8,12 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
+  Modal,
+  Keyboard,
+  ScrollView,
+  TouchableWithoutFeedback,
 } from "react-native";
+import { CameraView, Camera } from "expo-camera";
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -22,6 +27,15 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
   const [receiverData, setReceiverData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [checkingUser, setCheckingUser] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasCameraPermission(status === "granted");
+    })();
+  }, []);
 
   // ✅ Validate Receiver (Check if User Exists)
   const validateReceiver = async () => {
@@ -65,7 +79,7 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
         return;
       }
 
-      const response = await axios.post(
+      await axios.post(
         `${BASE_URL}/transaction/send`,
         {
           receiver_identifier: receiver,
@@ -89,57 +103,95 @@ const TransactionScreen = ({ navigation }: { navigation: any }) => {
     }
   };
 
+  // ✅ Handle QR Code Scanning
+  const handleBarCodeScanned = ({ data }: { data: string }) => {
+    setReceiver(data); // ✅ Auto-fill receiver from QR code
+    setIsScannerOpen(false); // ✅ Close Scanner
+    validateReceiver(); // ✅ Validate user after scanning
+  };
+
   return (
     <SafeAreaView style={styles.safeContainer}>
-      <View style={styles.container}>
-        {/* 🔙 Back Button */}
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.container}>
+            {/* 🔙 Back Button */}
+            <TouchableOpacity onPress={() => navigation.goBack()}>
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
 
-        <Text style={styles.title}>Send Money</Text>
+            <Text style={styles.title}>Send Money</Text>
 
-        {/* 📞 Receiver Input */}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Receiver's Phone or Wallet ID"
-          placeholderTextColor="#BBB"
-          value={receiver}
-          onChangeText={setReceiver}
-          onBlur={validateReceiver} // ✅ Auto-validate on blur
-        />
+            {/* 📞 Receiver Input + QR Scanner */}
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={styles.input}
+                placeholder="Enter Receiver's Phone or Wallet ID"
+                placeholderTextColor="#BBB"
+                value={receiver}
+                onChangeText={setReceiver}
+                onBlur={validateReceiver} // ✅ Auto-validate on blur
+              />
+              {/* 📷 QR Scanner Button */}
+              <TouchableOpacity style={styles.qrButton} onPress={() => setIsScannerOpen(true)}>
+                <Ionicons name="qr-code-outline" size={28} color="white" />
+              </TouchableOpacity>
+            </View>
 
-        {/* 🔍 Validating Receiver */}
-        {checkingUser && <ActivityIndicator size="small" color="white" />}
+            {/* 🔍 Validating Receiver */}
+            {checkingUser && <ActivityIndicator size="small" color="white" />}
 
-        {/* ✅ Receiver Found */}
-        {receiverData && (
-          <View style={styles.receiverInfo}>
-            <Text style={styles.receiverText}>Receiver: {receiverData.name}</Text>
-            <Text style={styles.receiverText}>Wallet ID: {receiverData.wallet_address}</Text>
-            <Text style={styles.receiverText}>Phone: {receiverData.phone_number}</Text>
+            {/* ✅ Receiver Found */}
+            {receiverData && (
+              <View style={styles.receiverInfo}>
+                <Text style={styles.receiverText}>Receiver: {receiverData.name}</Text>
+                <Text style={styles.receiverText}>Wallet ID: {receiverData.wallet_address}</Text>
+                <Text style={styles.receiverText}>Phone: {receiverData.phone_number}</Text>
+              </View>
+            )}
+
+            {/* 💰 Amount Input */}
+            <TextInput
+              style={styles.input}
+              placeholder="Enter Amount"
+              placeholderTextColor="#BBB"
+              keyboardType="numeric"
+              value={amount}
+              onChangeText={(text) => setAmount(text)}
+            />
+
+            {/* 🔘 Send Money Button */}
+            <TouchableOpacity
+              style={styles.transferButton}
+              onPress={handleTransfer}
+              disabled={loading}
+            >
+              <Text style={styles.transferText}>{loading ? "Processing..." : "Send Money"}</Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </ScrollView>
+      </TouchableWithoutFeedback>
 
-        {/* 💰 Amount Input */}
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Amount"
-          placeholderTextColor="#BBB"
-          keyboardType="numeric"
-          value={amount}
-          onChangeText={setAmount}
-        />
+      {/* 🔲 QR Scanner Modal */}
+      <Modal animationType="slide" transparent={false} visible={isScannerOpen}>
+        <View style={styles.modalContainer}>
+          {hasCameraPermission === null ? (
+            <ActivityIndicator size="large" color="white" />
+          ) : hasCameraPermission === false ? (
+            <Text style={styles.permissionText}>No access to camera</Text>
+          ) : (
+            <CameraView
+              style={styles.camera}
+              onBarcodeScanned={handleBarCodeScanned}
+            />
+          )}
 
-        {/* 🔘 Send Money Button */}
-        <TouchableOpacity
-          style={styles.transferButton}
-          onPress={handleTransfer}
-          disabled={loading}
-        >
-          <Text style={styles.transferText}>{loading ? "Processing..." : "Send Money"}</Text>
-        </TouchableOpacity>
-      </View>
+          {/* ❌ Close Scanner Button */}
+          <TouchableOpacity style={styles.closeScannerButton} onPress={() => setIsScannerOpen(false)}>
+            <Text style={styles.closeScannerText}>Close Scanner</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -150,8 +202,12 @@ const styles = StyleSheet.create({
   safeContainer: {
     flex: 1,
     backgroundColor: "#120E43",
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 20,
   },
   container: {
     width: "90%",
@@ -177,6 +233,22 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 15,
   },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#29247D",
+    borderRadius: 8,
+    marginBottom: 15,
+  },
+  qrButton: {
+    padding: 10,
+    backgroundColor: "#007AFF",
+    borderTopRightRadius: 8,
+    borderBottomRightRadius: 8,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  
   transferButton: {
     backgroundColor: "#D32F2F",
     paddingVertical: 15,
@@ -195,8 +267,37 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 15,
   },
-  receiverText: {
+  receiverText: {  // ✅ Added missing style
     color: "#FFF",
     fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
   },
-}); 
+  modalContainer: {
+    flex: 1,
+    backgroundColor: "black",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  camera: {
+    flex: 1,
+    width: "100%",
+  },
+  permissionText: {  
+    color: "white",
+    fontSize: 18,
+    textAlign: "center",
+    marginTop: 20,
+  },
+  closeScannerButton: {
+    backgroundColor: "#D32F2F",
+    padding: 10,
+    alignItems: "center",
+    marginTop: 20,
+  },
+  closeScannerText: {
+    color: "white",
+    fontSize: 18,
+  },
+});
+
