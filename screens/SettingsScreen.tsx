@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import QRCode from "react-native-qrcode-svg"; // ✅ Import QR Code Generator
 import Ionicons from "react-native-vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
@@ -64,6 +65,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
   return (
     <SafeAreaView style={styles.safeContainer}>
       <ScrollView contentContainerStyle={styles.container}>
+        {/* 🔙 Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="black" />
@@ -71,6 +73,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.headerTitle}>Profile</Text>
         </View>
 
+        {/* 👤 User Info */}
         <View style={styles.profileContainer}>
           <Image source={require("../Asset/Used/account.png")} style={styles.profileImage} />
           <View style={styles.profileTextContainer}>
@@ -79,6 +82,7 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           </View>
         </View>
 
+        {/* 📩 User Details */}
         <View style={styles.infoContainer}>
           <Text style={styles.infoLabel}>📩 Email:</Text>
           <Text style={styles.infoText}>{userData?.email || "Not Available"}</Text>
@@ -90,6 +94,17 @@ const ProfileScreen = ({ navigation }: { navigation: any }) => {
           <Text style={styles.infoText}>{userData?.wallet_address || "Not Available"}</Text>
         </View>
 
+        {/* 🔳 QR Code Generator */}
+        <View style={styles.qrContainer}>
+          <Text style={styles.qrTitle}>Scan QR Code to Send Money</Text>
+          {userData?.wallet_address ? (
+            <QRCode value={userData.wallet_address} size={200} backgroundColor="white" />
+          ) : (
+            <Text style={styles.qrError}>Wallet address not available</Text>
+          )}
+        </View>
+
+        {/* 🔘 Logout */}
         <View style={styles.menuContainer}>
           <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
             <View style={styles.menuLeft}>
@@ -120,6 +135,16 @@ const styles = StyleSheet.create({
   infoContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
   infoLabel: { fontSize: 14, fontWeight: "bold", marginTop: 10, color: "#333" },
   infoText: { fontSize: 16, color: "#555", marginBottom: 10 },
+  qrContainer: {
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 20,
+    elevation: 2,
+  },
+  qrTitle: { fontSize: 16, fontWeight: "bold", marginBottom: 10, color: "#333" },
+  qrError: { fontSize: 14, color: "red" },
   menuContainer: { marginTop: 20, backgroundColor: "#FFF", padding: 15, borderRadius: 10, elevation: 2 },
   menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: "#E0E0E0" },
   menuLeft: { flexDirection: "row", alignItems: "center" },
